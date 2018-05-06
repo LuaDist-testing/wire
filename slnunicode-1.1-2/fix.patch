@@ -1,0 +1,18 @@
+--- old/slnunico.c  2006-07-26 14:20:04.000000000 -0300
++++ new/slnunico.c  2008-02-01 22:46:44.000000000 -0200
+@@ -1321,7 +1321,6 @@
+ 	/* register unicode itself so require("unicode") works */
+ 	luaL_register(L, SLN_UNICODENAME,
+ 		uniclib + (sizeof uniclib/sizeof uniclib[0] - 1)); /* empty func list */
+-	lua_pop(L, 1);
+ 	lua_pushinteger(L, MODE_ASCII);
+ 	luaI_openlib(L, SLN_UNICODENAME ".ascii", uniclib, 1);
+ #ifdef SLNUNICODE_AS_STRING
+@@ -1360,6 +1359,7 @@
+ 		}
+ 	}
+ #endif
++	lua_settop(L, 2);
+ 	return 1;
+ }
+

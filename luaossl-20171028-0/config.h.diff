@@ -1,0 +1,7 @@
+--- a/src/openssl.c
++++ b/src/openssl.c
+@@ -26,3 +26 @@
+-#if HAVE_CONFIG_H
+-#include "config.h"
+-#endif
++#include "../config.h.guess"

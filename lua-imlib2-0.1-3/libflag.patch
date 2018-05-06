@@ -1,0 +1,16 @@
+--- old/Makefile	2008-01-22 16:32:27.000000000 -0200
++++ new/Makefile	2008-03-31 11:55:28.000000000 -0300
+@@ -14,10 +14,12 @@
+ 
+ SOS= limlib2.so
+ 
++LIBFLAG= -shared
++
+ all: limlib2.so
+ 
+ limlib2.so: $(OBJS)
+-	$(CC) -o $@ -shared $(OBJS) $(LIBS)
++	$(CC) -o $@ $(LIBFLAG) $(OBJS) $(LIBS)
+ 
+ .PHONY: clean doc test
+ clean:

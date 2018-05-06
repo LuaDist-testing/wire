@@ -1,0 +1,32 @@
+--- old/src/concurrent/distributed/Makefile	2008-01-25 14:50:57.000000000 -0200
++++ new/src/concurrent/distributed/Makefile	2008-01-25 14:52:05.000000000 -0200
+@@ -1,6 +1,7 @@
+ DESTDIR = 
+ PREFIX = /usr/local
+-SHAREDIR = $(PREFIX)/share/lua/5.1/concurrent/distributed
++SHAREDIR = $(PREFIX)/share/lua/5.1/
++SHAREMODDIR = $(SHAREDIR)/concurrent/distributed
+ 
+ SHARE = init.lua \
+ 	network.lua \
+@@ -18,15 +19,15 @@
+ $(SHARE):
+ 
+ install:
+-	if test ! -d $(DESTDIR)$(SHAREDIR); \
+-		then mkdir -p $(DESTDIR)$(SHAREDIR); \
++	if test ! -d $(DESTDIR)$(SHAREMODDIR); \
++		then mkdir -p $(DESTDIR)$(SHAREMODDIR); \
+ 	fi
+-	cp -f $(SHARE) $(DESTDIR)$(SHAREDIR) && \
+-		cd $(DESTDIR)$(SHAREDIR) && \
++	cp -f $(SHARE) $(DESTDIR)$(SHAREMODDIR) && \
++		cd $(DESTDIR)$(SHAREMODDIR) && \
+ 		chmod 0644 $(SHARE)
+ 
+ uninstall:
+-	cd $(DESTDIR)$(SHAREDIR) && \
++	cd $(DESTDIR)$(SHAREMODDIR) && \
+ 	    	rm -f $(SHARE)
+ 
+ clean:

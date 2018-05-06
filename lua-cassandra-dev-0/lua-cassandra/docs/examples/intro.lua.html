@@ -1,0 +1,192 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>lua-cassandra documentation</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-cassandra</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+
+
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/authentication.lua.html">authentication.lua</a></li>
+  <li><a href="../examples/batch.lua.html">batch.lua</a></li>
+  <li><strong>intro.lua</strong></li>
+  <li><a href="../examples/pagination.lua.html">pagination.lua</a></li>
+  <li><a href="../examples/ssl.lua.html">ssl.lua</a></li>
+</ul>
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/cassandra.html">cassandra</a></li>
+  <li><a href="../modules/resty.cassandra.cluster.html">resty.cassandra.cluster</a></li>
+  <li><a href="../modules/resty.cassandra.policies.lb.dc_rr.html">resty.cassandra.policies.lb.dc_rr</a></li>
+  <li><a href="../modules/resty.cassandra.policies.lb.rr.html">resty.cassandra.policies.lb.rr</a></li>
+  <li><a href="../modules/resty.cassandra.policies.reconnection.const.html">resty.cassandra.policies.reconnection.const</a></li>
+  <li><a href="../modules/resty.cassandra.policies.reconnection.exp.html">resty.cassandra.policies.reconnection.exp</a></li>
+  <li><a href="../modules/resty.cassandra.policies.retry.simple.html">resty.cassandra.policies.retry.simple</a></li>
+</ul>
+<h2>Manual</h2>
+<ul class="nowrap">
+  <li><a href="../manual/README.md.html">README</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+    <h2>intro.lua</h2>
+<pre>
+<span class="comment">--------------------------------
+</span><span class="comment">-- Single host module, plain Lua
+</span><span class="comment">--------------------------------
+</span>
+<span class="keyword">local</span> cassandra = <span class="global">require</span> <span class="string">"cassandra"</span>
+
+<span class="keyword">local</span> client = <span class="global">assert</span>(cassandra.new {
+  host = <span class="string">"127.0.0.1"</span>,
+  keyspace = <span class="string">"my_keyspace"</span>
+})
+
+client:settimeout(<span class="number">1000</span>)
+
+<span class="global">assert</span>(client:connect())
+
+<span class="keyword">local</span> res = <span class="global">assert</span>(client:execute <span class="string">[[
+  CREATE TABLE users(
+    id uuid PRIMARY KEY,
+    name varchar,
+    age int
+  )
+]]</span>)
+<span class="global">print</span>(res.<span class="global">type</span>) <span class="comment">-- "SCHEMA_CHANGE"
+</span>
+res = <span class="global">assert</span>(client:execute(<span class="string">"INSERT INTO users(id, name, age) VALUES(?, ?, ?)"</span>, {
+  cassandra.uuid(<span class="string">"1144bada-852c-11e3-89fb-e0b9a54a6d11"</span>),
+  <span class="string">"John O Reilly"</span>,
+  <span class="number">42</span>
+}))
+<span class="global">print</span>(res.<span class="global">type</span>) <span class="comment">-- "VOID"
+</span>
+<span class="keyword">local</span> rows = <span class="global">assert</span>(client:execute(<span class="string">"SELECT * FROM users WHERE age = ?"</span>, {
+  age = <span class="number">42</span> <span class="comment">-- key/value args
+</span>}, {
+  named = <span class="keyword">true</span> <span class="comment">-- named arguments
+</span>}))
+<span class="global">print</span>(rows.<span class="global">type</span>)    <span class="comment">-- "ROWS"
+</span><span class="global">print</span>(#rows)        <span class="comment">-- 1
+</span><span class="global">print</span>(rows[<span class="number">1</span>].name) <span class="comment">-- "John O Reilly"
+</span>
+client:close()
+
+<span class="comment">-------------------------------------------------------------------------------
+</span><span class="comment">-- Cluster module, OpenResty
+</span><span class="comment">-- This approach allows the cluster to live as an upvalue in your module's main
+</span><span class="comment">-- chunk, assuming the <code>lua_code_cache</code> directive is enabled in your nginx
+</span><span class="comment">-- config. This approach will be the most efficient as it will avoid re-creating
+</span><span class="comment">-- the cluster variable on each request and will preserve the cached state of
+</span><span class="comment">-- your load-balancing policy and prepared statements directly in the Lua land.
+</span><span class="comment">-------------------------------------------------------------------------------
+</span>
+<span class="comment">--
+</span><span class="comment">-- my_module.lua
+</span><span class="comment">--
+</span>
+<span class="keyword">local</span> cassandra = <span class="global">require</span> <span class="string">"cassandra"</span>
+<span class="keyword">local</span> Cluster = <span class="global">require</span> <span class="string">"resty.cassandra.cluster"</span>
+
+<span class="comment">-- cluster instance as an upvalue
+</span><span class="keyword">local</span> cluster
+
+<span class="keyword">local</span> _M = {}
+
+<span class="keyword">function</span> _M.init_cluster(...)
+  cluster = <span class="global">assert</span>(Cluster.new(...))
+
+  <span class="comment">-- we also retrieve the cluster's nodes informations early, to avoid
+</span>  <span class="comment">-- slowing down our first incoming request, which would have triggered
+</span>  <span class="comment">-- a refresh should this not be done already.
+</span>  <span class="global">assert</span>(cluster:refresh())
+<span class="keyword">end</span>
+
+<span class="keyword">function</span> _M.execute(...)
+  <span class="keyword">return</span> cluster:execute(...)
+<span class="keyword">end</span>
+
+<span class="keyword">return</span> _M
+
+<span class="comment">--
+</span><span class="comment">-- nginx.conf
+</span><span class="comment">--
+</span>
+http {
+  lua_shared_dict cassandra <span class="number">1</span>m; # shm storing cluster information
+  lua_code_cache on;            # ensure the upvalue is preserved beyond a single request
+
+  init_by_lua_block {
+    <span class="comment">-- will trigger a refresh of the cluster before the first request, but requires
+</span>    <span class="comment">-- LuaSocket since cosockets are not available in the 'init_by_lua' context.
+</span>    <span class="keyword">local</span> my_module = <span class="global">require</span> <span class="string">"my_module"</span>
+    my_module.init_cluster {
+      shm = <span class="string">"cassandra"</span>, <span class="comment">-- defined in http block
+</span>      contact_points = {<span class="string">"127.0.0.1"</span>, <span class="string">"127.0.0.2"</span>},
+      keyspace = <span class="string">"my_keyspace"</span>
+    }
+  }
+
+  server {
+    location / {
+      content_by_lua_block {
+        <span class="keyword">local</span> my_module = <span class="global">require</span> <span class="string">"my_module"</span>
+
+        <span class="keyword">local</span> rows, err = my_module.execute(<span class="string">"SELECT * FROM users WHERE id = ? AND name = ?"</span>, {
+          cassandra.uuid(<span class="string">"1144bada-852c-11e3-89fb-e0b9a54a6d11"</span>),
+          <span class="string">"John O Reilly"</span>
+        })
+        <span class="keyword">if</span> <span class="keyword">not</span> rows <span class="keyword">then</span>
+          ngx.log(ngx.ERR, <span class="string">"could not retrieve users: "</span>, err)
+          ngx.exit(<span class="number">500</span>)
+        <span class="keyword">end</span>
+
+        <span class="keyword">for</span> i, row <span class="keyword">in</span> <span class="global">ipairs</span>(rows) <span class="keyword">do</span>
+          ngx.say(i, <span class="string">": "</span>, rows[i].name) <span class="comment">-- "1: John O Reilly"
+</span>        <span class="keyword">end</span>
+      }
+    }
+  }
+}</pre>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
+<i style="float:right;">Last updated 2017-05-17 13:06:49 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>
